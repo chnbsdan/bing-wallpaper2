@@ -536,7 +536,7 @@ html, body {
             <button id="homeBtn"><i class="fas fa-home"></i> 首页</button>
             <button id="commentNavBtn"><i class="fas fa-comment"></i> 留言 <span class="badge-dot"></span></button>
             <a href="/api" target="_blank"><i class="fas fa-code"></i> API</a>
-            <a href="/history.html"><i class="fas fa-clock"></i> 历史时光</a>
+            <!-- ★★★ 已删除 "历史时光" 链接 ★★★ -->
             <a href="https://aoso.hangdn.com" target="_blank" rel="noopener"><i class="fas fa-blog"></i> 博客</a>
             <button id="themeToggle"><i class="fas fa-moon"></i></button>
         </div>
@@ -1038,7 +1038,7 @@ html, body {
             footer.className = 'footer-end';
             footer.innerHTML =
                 '<div class="footer-line"></div><div class="footer-icon"><i class="fas fa-check-circle"></i></div><div class="footer-text">已全部加载完成 <span>·</span> 共 <span id="footerTotalCount">' +
-                allData.length + '</span> 张壁纸</div><div class="footer-sub">— 感谢使用 Bing Wallpaper —</div>';
+                allData.length + '</span> 张壁纸</div><div class="footer-sub">— 本站由小史先生维护，感谢使用 Bing Wallpaper —</div>';
             grid.appendChild(footer);
         }
 
@@ -1112,7 +1112,7 @@ html, body {
         });
 
         // ============================================================
-        // 7. 大图预览
+        // 7. 大图预览 - ★★★ 切换图片时保持工具栏显隐状态 ★★★
         // ============================================================
 
         function openPreview(index) {
@@ -1125,11 +1125,12 @@ html, body {
             showPreview(currentPreviewIndex);
             previewOverlay.classList.add('active');
             document.body.style.overflow = 'hidden';
-            // ★★★ 使用兼容函数获取图片链接 ★★★
             var imgSrc = getImageUrl(currentPreviewItem, 'fhd');
             previewOverlay.style.setProperty('--bg-url', 'url(' + imgSrc + ')');
 
             navToggle.classList.add('hidden');
+            // ★★★ 默认显示工具栏，但用户点击图片后可以隐藏 ★★★
+            toolbarVisible = true;
             showToolbar();
 
             previewImg.onclick = function(e) {
@@ -1158,7 +1159,7 @@ html, body {
                     } else {
                         showPreview(currentPreviewIndex + 1);
                     }
-                    showToolbar();
+                    // ★★★ 触摸滑动切换时保持当前显隐状态 ★★★
                 }
                 startX = 0;
                 startY = 0;
@@ -1172,19 +1173,15 @@ html, body {
             currentPreviewIndex = index;
             currentPreviewItem = allData[currentPreviewIndex];
 
-            // ★★★ 使用兼容函数获取图片链接 ★★★
             var imgSrc = getImageUrl(currentPreviewItem, 'fhd');
-
             previewImg.src = imgSrc;
             previewImg.onerror = function() {
-                // 如果 FHD 失败，尝试 HD
                 var fallbackSrc = getImageUrl(currentPreviewItem, 'hd');
                 if (this.src !== fallbackSrc) {
                     this.src = fallbackSrc;
                     console.log('🔄 FHD 失败，降级为 HD');
                     return;
                 }
-                // 如果 HD 也失败，尝试 UHD
                 var fallback2Src = getImageUrl(currentPreviewItem, 'uhd');
                 if (this.src !== fallback2Src) {
                     this.src = fallback2Src;
@@ -1194,18 +1191,19 @@ html, body {
                 this.alt = '图片加载失败';
                 console.warn('❌ 预览图片加载失败:', currentPreviewItem.startdate || currentPreviewItem.date);
             };
-
             previewCopyright.textContent = currentPreviewItem.copyright || '';
             previewDate.textContent = currentPreviewItem.startdate || currentPreviewItem.date || '';
             previewDesc.textContent = currentPreviewItem.title || '';
             previewOverlay.style.setProperty('--bg-url', 'url(' + imgSrc + ')');
             resetZoom();
+            // ★★★ 保持当前显隐状态，不自动显示 ★★★
         }
 
         function closePreview() {
             previewOverlay.classList.remove('active');
             document.body.style.overflow = 'auto';
             navToggle.classList.remove('hidden');
+            toolbarVisible = true;
             showToolbar();
         }
 
@@ -1244,32 +1242,30 @@ html, body {
         var prevPreviewBtn = document.getElementById('prevPreviewBtn');
         var nextPreviewBtn = document.getElementById('nextPreviewBtn');
 
+        // ★★★ 左右箭头点击时只切换图片，不改变工具栏显隐状态 ★★★
         prevPreviewBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             showPreview(currentPreviewIndex - 1);
-            showToolbar();
         });
 
         nextPreviewBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             showPreview(currentPreviewIndex + 1);
-            showToolbar();
         });
 
+        // ★★★ 键盘事件中不自动显示工具栏 ★★★
         document.addEventListener('keydown', function(e) {
             if (!previewOverlay.classList.contains('active')) return;
             if (e.key === 'Escape') closePreview();
             if (e.key === 'ArrowLeft') {
                 e.preventDefault();
                 showPreview(currentPreviewIndex - 1);
-                showToolbar();
             }
             if (e.key === 'ArrowRight') {
                 e.preventDefault();
                 showPreview(currentPreviewIndex + 1);
-                showToolbar();
             }
         });
 
@@ -1310,7 +1306,6 @@ html, body {
                         'mobile_s': '768x1280'
                     };
                     var resSuffix = resMap[resolution] || 'UHD';
-                    // 移除已有的分辨率后缀
                     var cleanName = rawName.replace(/_(UHD|1920x1080|1080x1920|1366x768|768x1280|400x240)$/i, '');
                     return cleanName + '_' + resSuffix + '.jpg';
                 }
@@ -1536,6 +1531,7 @@ html, body {
         loadData();
         console.log('✅ 首页已加载（兼容必应数据 + 历史数据）');
         console.log('📊 数据源: /json/data.json（已合并）');
+        console.log('🔧 大图预览：点击图片切换工具栏，切换图片时保持状态');
 
         window.openComment = openComment;
 
