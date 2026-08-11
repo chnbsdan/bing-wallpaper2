@@ -66,31 +66,46 @@ export async function onRequest(context) {
       });
     }
 
-    // ★★★ 构造多个格式的图片 URL ★★★
-    const baseUrl = 'https://www.bing.com';
-    const imageUrls = [
-      `${baseUrl}${item.urlbase}_UHD.jpg`,
-      `${baseUrl}${item.urlbase}_1920x1080.jpg`,
-      `${baseUrl}${item.urlbase}_1920x1200.jpg`,
-    ];
+    // ★★★ 判断是历史数据还是必应数据 ★★★
+    const isHistory = item.isHistory === true;
+
+    // ★★★ 构造图片 URL ★★★
+    let imageUrls = [];
+    if (isHistory) {
+      // 历史数据：urlbase 已经是完整链接，直接使用
+      imageUrls = [
+        item.urlbase || '',
+        item.thumb || item.urlbase || ''
+      ];
+    } else {
+      // 必应数据：拼接域名
+      const baseUrl = 'https://www.bing.com';
+      imageUrls = [
+        `${baseUrl}${item.urlbase}_UHD.jpg`,
+        `${baseUrl}${item.urlbase}_1920x1080.jpg`,
+        `${baseUrl}${item.urlbase}_1920x1200.jpg`,
+      ];
+    }
 
     // ★★★ 降级加载函数 ★★★
     async function fetchImageWithFallback(urls, redirect) {
-      for (const url of urls) {
+      for (const imageUrl of urls) {
+        if (!imageUrl) continue;
         try {
-          const resp = await fetch(url, {
+          const resp = await fetch(imageUrl, {
             headers: { 'User-Agent': 'CloudflarePages-Function' }
           });
           if (resp.ok) {
             if (redirect) {
-              return Response.redirect(url, 302);
+              return Response.redirect(imageUrl, 302);
             }
             return new Response(resp.body, {
               headers: {
                 'Content-Type': resp.headers.get('Content-Type') || 'image/jpeg',
                 'Cache-Control': 'public, max-age=10800',
                 'X-Image-Date': item.startdate,
-                'X-Image-Copyright': encodeURIComponent(item.copyright || '')
+                'X-Image-Copyright': encodeURIComponent(item.copyright || ''),
+                'X-Image-Source': isHistory ? 'history' : 'bing'
               }
             });
           }
