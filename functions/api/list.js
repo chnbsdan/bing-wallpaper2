@@ -26,7 +26,6 @@ export async function onRequest(context) {
 
   try {
     const host = url.origin;
-    // ★★★ 读取 bing-wallpaper2 的 data.json ★★★
     const jsonUrl = `${host}/json/data.json`;
     const resp = await fetch(new Request(jsonUrl, request));
     if (!resp.ok) {
@@ -58,13 +57,32 @@ export async function onRequest(context) {
     const end = Math.min(start + pageSize, total);
     const items = data.slice(start, end);
 
-    const baseUrl = 'https://www.bing.com';
-    const formattedItems = items.map(item => ({
-      date: item.startdate,
-      copyright: item.copyright || '',
-      title: item.title || '',
-      url: `${baseUrl}${item.urlbase}_UHD.jpg`
-    }));
+    // ★★★ 格式化数据，统一返回格式 ★★★
+    const formattedItems = items.map(item => {
+      const isHistory = item.isHistory === true;
+      let imageUrl = '';
+      let thumbUrl = '';
+
+      if (isHistory) {
+        // 历史数据：直接使用完整链接
+        imageUrl = item.urlbase || '';
+        thumbUrl = item.thumb || item.urlbase || '';
+      } else {
+        // 必应数据：拼接域名
+        const baseUrl = 'https://www.bing.com';
+        imageUrl = `${baseUrl}${item.urlbase}_UHD.jpg`;
+        thumbUrl = `${baseUrl}${item.urlbase}_400x240.jpg`;
+      }
+
+      return {
+        date: item.startdate,
+        copyright: item.copyright || '',
+        title: item.title || '',
+        url: imageUrl,
+        thumb: thumbUrl,
+        isHistory: isHistory
+      };
+    });
 
     return new Response(JSON.stringify({
       code: 0,
