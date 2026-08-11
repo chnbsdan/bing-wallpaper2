@@ -9,7 +9,6 @@ export async function onRequest(context) {
 
   // ★★★ Bing 官方支持的尺寸列表 ★★★
   const SUPPORTED_SIZES = [400, 640, 768, 1024, 1366, 1920, 2560];
-  // ★★★ 尺寸到实际分辨率的映射 ★★★
   const SIZE_MAP = {
     400: '400x240',
     640: '640x360',
@@ -25,20 +24,16 @@ export async function onRequest(context) {
     return new Response("Invalid format parameter", { status: 400 });
   }
 
-  // ★★★ 验证 size 参数 ★★★
   if (size < 0 || size > 3840) {
     return new Response("Invalid size parameter, must be between 0 and 3840", { status: 400 });
   }
 
-  // ★★★ 如果指定了不支持的尺寸，自动修正为最接近的支持尺寸 ★★★
   let actualSize = size;
   if (size > 0 && !SUPPORTED_SIZES.includes(size)) {
-    // 找到最接近的支持尺寸
     const closest = SUPPORTED_SIZES.reduce((prev, curr) => {
       return Math.abs(curr - size) < Math.abs(prev - size) ? curr : prev;
     });
     actualSize = closest;
-    console.log(`⚠️ 尺寸 ${size} 不支持，自动修正为 ${actualSize}`);
   }
 
   try {
@@ -56,34 +51,49 @@ export async function onRequest(context) {
       return new Response("No data found", { status: 404 });
     }
 
+    // ★★★ 按 startdate 排序，取最新的 ★★★
     data.sort((a, b) => b.startdate.localeCompare(a.startdate));
     const latest = data[0];
 
-    const baseUrl = 'https://www.bing.com';
+    // ★★★ 判断是历史数据还是必应数据 ★★★
+    const isHistory = latest.isHistory === true;
+
+    // ★★★ 构造图片 URL ★★★
     let imageUrl;
+    let imageUrls = [];
 
-    // ★★★ 根据实际尺寸构造 URL ★★★
-    if (actualSize > 0 && SIZE_MAP[actualSize]) {
-      imageUrl = `${baseUrl}${latest.urlbase}_${SIZE_MAP[actualSize]}.jpg`;
+    if (isHistory) {
+      // ★★★ 历史数据：urlbase 已经是完整链接 ★★★
+      imageUrl = latest.urlbase || '';
+      imageUrls = [
+        imageUrl,
+        latest.thumb || imageUrl
+      ];
+      console.log(`📸 daily (历史): ${latest.startdate}, url: ${imageUrl}`);
     } else {
-      imageUrl = `${baseUrl}${latest.urlbase}_UHD.jpg`;
+      // ★★★ 必应数据：拼接域名 ★★★
+      const baseUrl = 'https://www.bing.com';
+      if (actualSize > 0 && SIZE_MAP[actualSize]) {
+        imageUrl = `${baseUrl}${latest.urlbase}_${SIZE_MAP[actualSize]}.jpg`;
+      } else {
+        imageUrl = `${baseUrl}${latest.urlbase}_UHD.jpg`;
+      }
+      imageUrls = [
+        imageUrl,
+        `${baseUrl}${latest.urlbase}_1920x1080.jpg`,
+        `${baseUrl}${latest.urlbase}_1920x1200.jpg`,
+      ];
+      console.log(`📸 daily (必应): ${latest.startdate}, size: ${actualSize || 'UHD'}, url: ${imageUrl}`);
     }
-
-    console.log(`📸 daily: ${latest.startdate}, size: ${actualSize || 'UHD'}, url: ${imageUrl}`);
 
     if (redirect) {
       return Response.redirect(imageUrl, 302);
     }
 
-    // ★★★ 降级支持 ★★★
-    const imageUrls = [
-      imageUrl,
-      `${baseUrl}${latest.urlbase}_1920x1080.jpg`,
-      `${baseUrl}${latest.urlbase}_1920x1200.jpg`,
-    ];
-
+    // ★★★ 降级加载函数 ★★★
     async function fetchImageWithFallback(urls) {
       for (const url of urls) {
+        if (!url) continue;
         try {
           const resp = await fetch(url, {
             headers: { 'User-Agent': 'CloudflarePages-Function' }
@@ -94,7 +104,8 @@ export async function onRequest(context) {
                 "Content-Type": resp.headers.get("Content-Type") || "image/jpeg",
                 "Cache-Control": "public, max-age=10800",
                 "X-Image-Date": latest.startdate,
-                "X-Image-Copyright": encodeURIComponent(latest.copyright || '')
+                "X-Image-Copyright": encodeURIComponent(latest.copyright || ''),
+                "X-Image-Source": isHistory ? 'history' : 'bing'
               },
             });
           }
