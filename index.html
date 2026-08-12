@@ -611,7 +611,6 @@
             overflow: hidden;
         }
 
-        /* ★★★ 预览图片 - 使用 object-position 智能居中 ★★★ */
         .preview-image {
             width: 100vw;
             height: 100vh;
@@ -1444,60 +1443,42 @@
     </script>
     <script>
         // ============================================================
-        // ★★★ 纯 JavaScript 智能主体检测（无外部依赖） ★★★
+        // ★★★ 纯 JavaScript 智能主体检测 ★★★
         // ============================================================
         class SmartSubjectDetector {
             constructor() {
-                console.log('🧠 智能主体检测器已初始化（纯JS版）');
+                console.log('🧠 智能主体检测器已初始化');
             }
 
-            // 检测图片中的主体 - 使用边缘检测 + 颜色方差
             async detectMainSubject(imageElement) {
                 const imgWidth = imageElement.naturalWidth || imageElement.width;
                 const imgHeight = imageElement.naturalHeight || imageElement.height;
-
-                if (imgWidth === 0 || imgHeight === 0) {
-                    return null;
-                }
+                if (imgWidth === 0 || imgHeight === 0) return null;
 
                 try {
-                    // 创建离屏Canvas分析图片
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-                    // 缩小图片提高性能（保持宽高比）
                     const maxSize = 400;
                     let scale = Math.min(1, maxSize / Math.max(imgWidth, imgHeight));
                     canvas.width = Math.floor(imgWidth * scale);
                     canvas.height = Math.floor(imgHeight * scale);
-
-                    // 绘制图片
                     ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
 
-                    // 获取像素数据
                     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                     const data = imageData.data;
 
-                    // 1. 计算每个像素的显著度（边缘 + 颜色差异）
-                    const saliencyMap = this.computeSaliencyMap(data, canvas.width, canvas.height);
-
-                    // 2. 找到最显著的区域
-                    const bestRegion = this.findBestRegion(saliencyMap, canvas.width, canvas.height);
+                    const saliency = this.computeSaliencyMap(data, canvas.width, canvas.height);
+                    const bestRegion = this.findBestRegion(saliency, canvas.width, canvas.height);
 
                     if (bestRegion) {
-                        // 转换回原始坐标
-                        const result = {
+                        return {
                             x: bestRegion.x / scale,
                             y: bestRegion.y / scale,
                             width: bestRegion.width / scale,
                             height: bestRegion.height / scale,
                             type: 'salient'
                         };
-                        console.log('🎯 检测到主体区域:', Math.round(result.x), Math.round(result.y),
-                            Math.round(result.width), 'x', Math.round(result.height));
-                        return result;
                     }
-
                     return null;
                 } catch (e) {
                     console.warn('主体检测失败:', e);
@@ -1505,55 +1486,36 @@
                 }
             }
 
-            // 计算显著度图
             computeSaliencyMap(data, width, height) {
                 const saliency = new Float32Array(width * height);
-
-                // 使用滑动窗口计算局部对比度
                 const windowSize = Math.min(30, Math.floor(Math.min(width, height) * 0.15));
                 const halfWindow = Math.floor(windowSize / 2);
 
                 for (let y = halfWindow; y < height - halfWindow; y += 2) {
                     for (let x = halfWindow; x < width - halfWindow; x += 2) {
                         const idx = (y * width + x) * 4;
-                        const r = data[idx];
-                        const g = data[idx + 1];
-                        const b = data[idx + 2];
-                        const centerGray = 0.299 * r + 0.587 * g + 0.114 * b;
+                        const centerGray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
 
-                        // 计算周围像素的平均值
                         let sum = 0,
                             count = 0;
                         for (let dy = -halfWindow; dy <= halfWindow; dy += 2) {
                             for (let dx = -halfWindow; dx <= halfWindow; dx += 2) {
                                 if (dx === 0 && dy === 0) continue;
                                 const ni = ((y + dy) * width + (x + dx)) * 4;
-                                const nr = data[ni];
-                                const ng = data[ni + 1];
-                                const nb = data[ni + 2];
-                                const ngray = 0.299 * nr + 0.587 * ng + 0.114 * nb;
+                                const ngray = 0.299 * data[ni] + 0.587 * data[ni + 1] + 0.114 * data[ni + 2];
                                 sum += ngray;
                                 count++;
                             }
                         }
                         const avgGray = sum / count;
-
-                        // 对比度 = 中心与周围的差异
                         const contrast = Math.abs(centerGray - avgGray);
-
-                        // 颜色方差
                         const colorVar = this.calculateColorVariance(data, width, height, x, y, 3);
-
-                        // 综合得分
                         saliency[y * width + x] = contrast * 0.7 + colorVar * 0.3;
                     }
                 }
-
-                // 高斯模糊平滑
                 return this.gaussianBlur(saliency, width, height, 3);
             }
 
-            // 计算局部颜色方差
             calculateColorVariance(data, width, height, cx, cy, radius) {
                 let sum = 0,
                     sumSq = 0,
@@ -1575,12 +1537,10 @@
                 return sumSq / count - mean * mean;
             }
 
-            // 高斯模糊
             gaussianBlur(data, width, height, radius) {
                 const result = new Float32Array(data.length);
                 const kernel = this.gaussianKernel(radius);
                 const half = Math.floor(radius / 2);
-
                 for (let y = 0; y < height; y++) {
                     for (let x = 0; x < width; x++) {
                         let sum = 0,
@@ -1601,7 +1561,6 @@
                 return result;
             }
 
-            // 高斯核
             gaussianKernel(size) {
                 const kernel = [];
                 const sigma = size / 3;
@@ -1616,7 +1575,6 @@
                         sum += value;
                     }
                 }
-                // 归一化
                 for (let y = 0; y < size; y++) {
                     for (let x = 0; x < size; x++) {
                         kernel[y][x] /= sum;
@@ -1625,19 +1583,17 @@
                 return kernel;
             }
 
-            // 找到最佳区域
             findBestRegion(saliency, width, height) {
                 const regionSize = Math.min(120, Math.floor(Math.min(width, height) * 0.35));
                 const step = Math.max(5, Math.floor(regionSize / 5));
-
                 let maxScore = -Infinity;
                 let bestX = 0,
                     bestY = 0;
 
                 for (let y = 0; y <= height - regionSize; y += step) {
                     for (let x = 0; x <= width - regionSize; x += step) {
-                        let score = 0;
-                        let count = 0;
+                        let score = 0,
+                            count = 0;
                         for (let dy = 0; dy < regionSize; dy += 2) {
                             for (let dx = 0; dx < regionSize; dx += 2) {
                                 score += saliency[(y + dy) * width + (x + dx)];
@@ -1645,8 +1601,6 @@
                             }
                         }
                         score = count > 0 ? score / count : 0;
-
-                        // 中心偏好
                         const cx = x + regionSize / 2;
                         const cy = y + regionSize / 2;
                         const distFromCenter = Math.sqrt(
@@ -1654,7 +1608,6 @@
                             Math.pow((cy / height) - 0.5, 2)
                         );
                         score *= (1 + (1 - distFromCenter) * 0.4);
-
                         if (score > maxScore) {
                             maxScore = score;
                             bestX = x;
@@ -1662,62 +1615,214 @@
                         }
                     }
                 }
-
                 if (maxScore > 0) {
-                    return {
-                        x: bestX,
-                        y: bestY,
-                        width: regionSize,
-                        height: regionSize,
-                        score: maxScore
-                    };
+                    return { x: bestX, y: bestY, width: regionSize, height: regionSize, score: maxScore };
                 }
                 return null;
             }
 
-            // 获取智能居中位置（百分比）
             async getSmartPosition(imageElement) {
                 const subject = await this.detectMainSubject(imageElement);
-
                 if (!subject) {
                     console.log('📌 未检测到主体，使用中心显示');
                     return { x: 50, y: 50 };
                 }
-
                 const imgWidth = imageElement.naturalWidth || imageElement.width;
                 const imgHeight = imageElement.naturalHeight || imageElement.height;
-
-                // 计算主体中心位置百分比
                 const centerX = (subject.x + subject.width / 2) / imgWidth * 100;
                 const centerY = (subject.y + subject.height / 2) / imgHeight * 100;
-
-                // 限制范围，避免过度偏移
                 const clampedX = Math.max(25, Math.min(75, centerX));
                 const clampedY = Math.max(25, Math.min(75, centerY));
-
                 console.log('🎯 智能居中位置:', clampedX.toFixed(1) + '%', clampedY.toFixed(1) + '%');
-
                 return { x: clampedX, y: clampedY };
             }
         }
 
         // ============================================================
-        // 工具函数：获取图片链接
+        // ★★★ 下载功能 - 通用下载器（兼容PC和手机） ★★★
+        // ============================================================
+        class DownloadManager {
+            constructor() {
+                this.isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                console.log('📱 设备类型:', this.isMobile ? '移动端' : '桌面端');
+            }
+
+            // 下载图片
+            async downloadImage(url, filename) {
+                console.log('📥 开始下载:', filename);
+
+                try {
+                    // 1. 尝试使用 fetch 获取图片
+                    const response = await fetch(url, {
+                        mode: 'cors',
+                        headers: {
+                            'Accept': 'image/*'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        // 检查是否是图片类型
+                        if (blob.type.startsWith('image/')) {
+                            this.saveBlob(blob, filename);
+                            return;
+                        }
+                    }
+                    // 2. fetch 失败，尝试直接下载
+                    this.directDownload(url, filename);
+                } catch (error) {
+                    console.warn('⚠️ fetch下载失败，尝试直接下载:', error);
+                    this.directDownload(url, filename);
+                }
+            }
+
+            // 保存 Blob
+            saveBlob(blob, filename) {
+                try {
+                    // 检查是否是图片
+                    if (!blob.type.startsWith('image/')) {
+                        console.warn('⚠️ 不是图片类型，尝试直接下载');
+                        this.directDownload(URL.createObjectURL(blob), filename);
+                        return;
+                    }
+
+                    // 创建下载链接
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = filename;
+
+                    // 手机端兼容
+                    if (this.isMobile) {
+                        // 移动端使用新窗口打开
+                        const newWindow = window.open();
+                        if (newWindow) {
+                            newWindow.document.write(
+                                `<img src="${url}" style="max-width:100%;margin:auto;display:block;" />`
+                            );
+                            newWindow.document.title = filename;
+                            newWindow.document.body.style.background = '#000';
+                            newWindow.document.body.style.display = 'flex';
+                            newWindow.document.body.style.alignItems = 'center';
+                            newWindow.document.body.style.justifyContent = 'center';
+                            newWindow.document.body.style.height = '100vh';
+                            newWindow.document.body.style.margin = '0';
+                            setTimeout(() => {
+                                URL.revokeObjectURL(url);
+                            }, 10000);
+                            console.log('✅ 移动端: 在新窗口打开图片');
+                            return;
+                        }
+                    }
+
+                    // 桌面端或移动端兼容方法
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    setTimeout(() => {
+                        URL.revokeObjectURL(url);
+                    }, 2000);
+
+                    console.log('✅ 下载成功:', filename);
+                } catch (error) {
+                    console.error('❌ 保存失败:', error);
+                    this.directDownload(URL.createObjectURL(blob), filename);
+                }
+            }
+
+            // 直接下载（打开新窗口）
+            directDownload(url, filename) {
+                try {
+                    // 方法1: 使用 a 标签
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = filename;
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    console.log('✅ 直接下载已触发:', filename);
+                } catch (error) {
+                    console.error('❌ 直接下载失败:', error);
+                    // 方法2: 新窗口打开
+                    window.open(url, '_blank');
+                    console.log('✅ 已在新窗口打开:', url);
+                }
+            }
+
+            // 获取图片URL（支持各种分辨率）
+            getImageUrl(item, resolution) {
+                if (!item) return '';
+                if (item.isHistory) {
+                    return item.urlbase || '';
+                }
+                const resMap = {
+                    'thumb': '_400x240.jpg',
+                    'hd': '_1920x1200.jpg',
+                    'fhd': '_1920x1080.jpg',
+                    'uhd': '_UHD.jpg',
+                    '4k': '_UHD.jpg'
+                };
+                const suffix = resMap[resolution] || '_1920x1080.jpg';
+                return 'https://www.bing.com' + (item.urlbase || '') + suffix;
+            }
+
+            // 获取文件名
+            getFileName(item, resolution) {
+                const urlbase = item.urlbase || '';
+                let rawName = '';
+
+                if (item.isHistory) {
+                    const urlParts = urlbase.split('/');
+                    rawName = urlParts[urlParts.length - 1] || '';
+                    rawName = rawName.replace(/\.(jpg|jpeg|png|webp)$/i, '');
+                    if (rawName) {
+                        const resMap = {
+                            '4k': 'UHD',
+                            'fhd': '1920x1080',
+                            'hd': '1366x768',
+                            'mobile': '1080x1920',
+                            'mobile_s': '768x1280'
+                        };
+                        const resSuffix = resMap[resolution] || 'UHD';
+                        const cleanName = rawName.replace(/_(UHD|1920x1080|1080x1920|1366x768|768x1280|400x240)$/i, '');
+                        return cleanName + '_' + resSuffix + '.jpg';
+                    }
+                    return 'wallpaper_' + (item.startdate || item.date || Date.now()) + '_' + resolution + '.jpg';
+                }
+
+                if (urlbase) {
+                    const match = urlbase.match(/[^/]+$/);
+                    if (match) {
+                        rawName = match[0];
+                        if (rawName.startsWith('th?id=')) {
+                            rawName = rawName.replace('th?id=', '');
+                        }
+                    }
+                }
+                if (rawName) {
+                    const resMap = {
+                        '4k': 'UHD',
+                        'fhd': '1920x1080',
+                        'hd': '1366x768',
+                        'mobile': '1080x1920',
+                        'mobile_s': '768x1280'
+                    };
+                    const resSuffix = resMap[resolution] || 'UHD';
+                    const cleanName = rawName.replace(/_(UHD|1920x1080|1080x1920|1366x768|768x1280|400x240)$/i, '');
+                    return cleanName + '_' + resSuffix + '.jpg';
+                }
+                return 'wallpaper_' + (item.startdate || item.date || Date.now()) + '_' + resolution + '.jpg';
+            }
+        }
+
+        // ============================================================
+        // 工具函数：获取图片链接（兼容原有代码）
         // ============================================================
         function getImageUrl(item, resolution) {
-            if (!item) return '';
-            if (item.isHistory) {
-                return item.urlbase || '';
-            }
-            var resMap = {
-                'thumb': '_400x240.jpg',
-                'hd': '_1920x1200.jpg',
-                'fhd': '_1920x1080.jpg',
-                'uhd': '_UHD.jpg',
-                '4k': '_UHD.jpg'
-            };
-            var suffix = resMap[resolution] || '_1920x1080.jpg';
-            return 'https://www.bing.com' + (item.urlbase || '') + suffix;
+            const dm = new DownloadManager();
+            return dm.getImageUrl(item, resolution);
         }
 
         function getThumbUrl(item) {
@@ -1899,6 +2004,7 @@
 
         var toolbarVisible = true;
         var detector = new SmartSubjectDetector();
+        var downloadManager = new DownloadManager();
 
         // ============================================================
         // 6.1 加载数据
@@ -2247,7 +2353,6 @@
             };
         }
 
-        // ★★★ 显示预览并智能居中 ★★★
         function showPreview(index) {
             if (allData.length === 0) return;
             if (index < 0) index = allData.length - 1;
@@ -2257,15 +2362,12 @@
 
             var imgSrc = getImageUrl(currentPreviewItem, 'fhd');
 
-            // 先设置图片
             previewImg.src = imgSrc;
 
-            // 图片加载完成后进行智能居中
             previewImg.onload = async function() {
                 console.log('🖼️ 图片加载完成，开始智能居中...');
 
                 try {
-                    // 使用纯JS检测主体
                     const position = await detector.getSmartPosition(previewImg);
                     previewImg.style.objectPosition = position.x + '% ' + position.y + '%';
                     console.log('✅ 智能居中完成:', position.x.toFixed(1) + '%', position.y.toFixed(1) + '%');
@@ -2274,7 +2376,6 @@
                     previewImg.style.objectPosition = '50% 50%';
                 }
 
-                // 更新背景
                 previewOverlay.style.setProperty('--bg-url', 'url(' + imgSrc + ')');
             };
 
@@ -2308,7 +2409,6 @@
             navToggle.classList.remove('hidden');
             toolbarVisible = true;
             showToolbar();
-            // 重置位置
             previewImg.style.objectPosition = '50% 50%';
         }
 
@@ -2379,94 +2479,68 @@
         closePreviewBtn.addEventListener('click', closePreview);
 
         // ============================================================
-        // 7.1 下载功能 - 简化版（只做中心裁剪，避免跨域问题）
+        // ★★★ 7.1 下载功能 - 使用 DownloadManager ★★★
         // ============================================================
 
         downloadMenu.querySelectorAll('a').forEach(function(item) {
             item.addEventListener('click', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 var res = this.getAttribute('data-res');
                 console.log('📥 下载请求:', res);
-                downloadImage(currentPreviewIndex, res);
+                handleDownload(currentPreviewIndex, res);
             });
         });
 
-        function getDownloadFileName(item, resolution) {
-            var urlbase = item.urlbase || '';
-            var rawName = '';
-
-            if (item.isHistory) {
-                var urlParts = urlbase.split('/');
-                rawName = urlParts[urlParts.length - 1] || '';
-                rawName = rawName.replace(/\.(jpg|jpeg|png|webp)$/i, '');
-                if (rawName) {
-                    var resMap = {
-                        '4k': 'UHD',
-                        'fhd': '1920x1080',
-                        'hd': '1366x768',
-                        'mobile': '1080x1920',
-                        'mobile_s': '768x1280'
-                    };
-                    var resSuffix = resMap[resolution] || 'UHD';
-                    var cleanName = rawName.replace(/_(UHD|1920x1080|1080x1920|1366x768|768x1280|400x240)$/i, '');
-                    return cleanName + '_' + resSuffix + '.jpg';
-                }
-                return 'wallpaper_' + (item.startdate || item.date || Date.now()) + '_' + resolution + '.jpg';
+        function handleDownload(index, resolution) {
+            if (!allData || allData.length === 0) {
+                console.warn('⚠️ 没有数据可下载');
+                return;
             }
 
-            if (urlbase) {
-                var match = urlbase.match(/[^/]+$/);
-                if (match) {
-                    rawName = match[0];
-                    if (rawName.startsWith('th?id=')) {
-                        rawName = rawName.replace('th?id=', '');
-                    }
-                }
-            }
-            if (rawName) {
-                var resMap = {
-                    '4k': 'UHD',
-                    'fhd': '1920x1080',
-                    'hd': '1366x768',
-                    'mobile': '1080x1920',
-                    'mobile_s': '768x1280'
-                };
-                var resSuffix = resMap[resolution] || 'UHD';
-                var cleanName = rawName.replace(/_(UHD|1920x1080|1080x1920|1366x768|768x1280|400x240)$/i, '');
-                return cleanName + '_' + resSuffix + '.jpg';
-            }
-            return 'wallpaper_' + (item.startdate || item.date || Date.now()) + '_' + resolution + '.jpg';
-        }
-
-        function downloadImage(index, resolution) {
-            if (!allData || allData.length === 0) return;
             var item = allData[index];
-            if (!item) return;
+            if (!item) {
+                console.warn('⚠️ 未找到图片数据');
+                return;
+            }
 
-            var fileName = getDownloadFileName(item, resolution);
-            console.log('📥 下载文件名:', fileName);
-
+            // 获取下载URL
             var downloadUrl;
             if (item.isHistory) {
                 downloadUrl = item.urlbase || '';
             } else {
-                downloadUrl = getImageUrl(item, 'uhd');
+                // 根据分辨率获取URL
+                const resMap = {
+                    '4k': 'uhd',
+                    'fhd': 'fhd',
+                    'hd': 'hd',
+                    'mobile': 'uhd',
+                    'mobile_s': 'uhd'
+                };
+                const resKey = resMap[resolution] || 'fhd';
+                downloadUrl = getImageUrl(item, resKey);
             }
 
-            if (downloadUrl) {
-                console.log('🌐 下载URL:', downloadUrl);
-                var link = document.createElement('a');
-                link.href = downloadUrl;
-                link.download = fileName;
-                link.target = '_blank';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                console.log('✅ 下载已开始');
-            } else {
+            if (!downloadUrl) {
                 console.warn('⚠️ 没有可用的下载链接');
+                alert('无法获取图片下载链接');
+                return;
             }
+
+            // 获取文件名
+            var filename = downloadManager.getFileName(item, resolution);
+            console.log('📥 下载:', filename);
+            console.log('🌐 URL:', downloadUrl);
+
+            // 执行下载
+            downloadManager.downloadImage(downloadUrl, filename);
         }
+
+        // 为下载按钮添加点击事件（下拉菜单触发）
+        document.getElementById('downloadBtn').addEventListener('click', function(e) {
+            // 如果下拉菜单是打开的，不额外处理
+            console.log('📥 点击下载按钮');
+        });
 
         // ============================================================
         // 8. 缩放
@@ -2532,10 +2606,9 @@
         // 9. 启动
         // ============================================================
         loadData();
-        console.log('✅ 首页已加载（纯JS智能居中，无跨域问题）');
+        console.log('✅ 首页已加载（智能居中 + 通用下载）');
         console.log('📊 数据源: /json/data.json');
-        console.log('🧠 预览时自动识别人物/物体并居中显示');
-        console.log('💡 使用边缘检测+颜色方差算法，无需外部依赖');
+        console.log('📱 下载功能已兼容PC和移动端');
 
         window.openComment = openComment;
 
