@@ -343,15 +343,15 @@
             background: var(--bg-primary);
         }
         .grid {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 4px;
             flex: 1;
-            padding: 0;
+            padding: 4px;
             overflow-y: auto;
             min-height: 0;
             background: var(--bg-primary);
-            align-content: flex-start;
-            gap: 0;
+            align-content: start;
         }
         .grid::-webkit-scrollbar {
             width: 6px;
@@ -368,20 +368,45 @@
             background: #81d4fa;
         }
 
-        /* ===== 卡片 - 一排5个 ===== */
+        /* ===== 卡片 - 响应式宽高比 ★★★ ===== */
         .card {
             position: relative;
             overflow: hidden;
             background: var(--bg-card);
-            flex: 0 0 20%;
-            aspect-ratio: 16 / 9;
             cursor: pointer;
-            transition: background 0.3s ease;
-            contain: strict;
+            transition: all 0.3s ease;
             -webkit-tap-highlight-color: transparent;
-            border-radius: 0;
+            border-radius: 6px;
+            /* ★★★ 移动端默认 3:5（竖屏） ★★★ */
+            aspect-ratio: 3 / 5;
             min-height: 0;
         }
+        /* ★★★ 桌面端改为 16:9（横屏） ★★★ */
+        @media (min-width: 768px) {
+            .grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                padding: 8px;
+            }
+            .card {
+                aspect-ratio: 16 / 9;
+                border-radius: 8px;
+                transition: transform 0.3s ease, box-shadow 0.3s ease, z-index 0.3s ease;
+            }
+            .card:hover {
+                transform: scale(1.05);
+                z-index: 1;
+                box-shadow: 0 0 0 3px rgba(220, 60, 60, 0.6);
+            }
+        }
+        @media (min-width: 1024px) {
+            .grid {
+                grid-template-columns: repeat(5, 1fr);
+                gap: 10px;
+                padding: 10px;
+            }
+        }
+
         .card img {
             width: 100%;
             height: 100%;
@@ -390,7 +415,7 @@
             position: relative;
             z-index: 2;
             opacity: 0;
-            transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.2, 0.9, 0.4, 1);
+            transition: opacity 0.5s ease;
             background: var(--bg-card);
             -webkit-user-select: none;
             user-select: none;
@@ -398,9 +423,7 @@
         .card img.loaded {
             opacity: 1;
         }
-        .card:hover img {
-            transform: scale(1.05);
-        }
+
         .card .placeholder-bg {
             position: absolute;
             top: 0;
@@ -409,8 +432,8 @@
             height: 100%;
             background-size: cover;
             background-position: center;
-            filter: blur(12px) brightness(0.7);
-            transform: scale(1.04);
+            filter: blur(20px) brightness(0.6);
+            transform: scale(1.05);
             transition: opacity 0.6s ease;
             z-index: 1;
             background-color: var(--bg-card);
@@ -418,44 +441,64 @@
         .card .placeholder-bg.hidden {
             opacity: 0;
         }
+
+        /* ★★★ 卡片信息 - 像Nuxt网站一样 ★★★ */
         .card .info {
+            position: absolute;
+            z-index: 3;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        /* 日期 - 左上角 */
+        .card .info .date {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            padding: 2px 8px;
+            border-radius: 0 0 8px 0;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+        }
+        /* 标题 - 底部 */
+        .card .info .title {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            z-index: 3;
-            padding: 14px 12px 10px;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
-            color: #fff;
-            opacity: 0;
-            transition: opacity 0.25s ease;
-            pointer-events: none;
-        }
-        .card:hover .info {
-            opacity: 1;
-        }
-        .card .info .date {
-            font-size: 15px;
-            color: rgba(255, 255, 255, 0.8);
-            font-weight: 600;
-        }
-        .card .info .title {
-            font-size: 13px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            padding: 4px 8px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.95);
             font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
         }
-        .card .info .copyright {
-            font-size: 11px;
-            color: rgba(255, 255, 255, 0.4);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        /* 桌面端 hover 显示更多信息 */
+        @media (min-width: 768px) {
+            .card .info .date {
+                font-size: 12px;
+                padding: 3px 10px;
+            }
+            .card .info .title {
+                font-size: 13px;
+                padding: 6px 10px;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+            .card:hover .info .title {
+                opacity: 1;
+            }
         }
 
         .loading-indicator {
-            flex: 0 0 100%;
+            grid-column: 1 / -1;
             text-align: center;
             padding: 20px 0 30px;
             color: var(--text-muted);
@@ -476,7 +519,7 @@
         }
 
         .footer-end {
-            flex: 0 0 100%;
+            grid-column: 1 / -1;
             text-align: center;
             padding: 30px 20px 40px;
             color: var(--text-faint);
@@ -554,7 +597,7 @@
             display: flex;
         }
         .empty {
-            flex: 0 0 100%;
+            grid-column: 1 / -1;
             text-align: center;
             padding: 80px 20px;
             color: var(--text-secondary);
@@ -1443,7 +1486,7 @@
     </script>
     <script>
         // ============================================================
-        // ★★★ 智能主体检测类（纯JS，用于预览居中） ★★★
+        // ★★★ 智能主体检测类（纯JS） ★★★
         // ============================================================
         class SmartSubjectDetector {
             constructor() {
@@ -1624,7 +1667,6 @@
             async getSmartPosition(imageElement) {
                 const subject = await this.detectMainSubject(imageElement);
                 if (!subject) {
-                    console.log('📌 未检测到主体，使用中心显示');
                     return { x: 50, y: 50 };
                 }
                 const imgWidth = imageElement.naturalWidth || imageElement.width;
@@ -1633,7 +1675,6 @@
                 const centerY = (subject.y + subject.height / 2) / imgHeight * 100;
                 const clampedX = Math.max(25, Math.min(75, centerX));
                 const clampedY = Math.max(25, Math.min(75, centerY));
-                console.log('🎯 智能居中位置:', clampedX.toFixed(1) + '%', clampedY.toFixed(1) + '%');
                 return { x: clampedX, y: clampedY };
             }
         }
@@ -1879,7 +1920,7 @@
         }
 
         // ============================================================
-        // 6.2 渲染页面
+        // 6.2 渲染页面 - ★★★ 使用 Grid 布局 + 响应式宽高比 ★★★
         // ============================================================
         function renderPage(page) {
             var data = filteredData.length > 0 ? filteredData : allData;
@@ -1912,14 +1953,14 @@
 
                 var thumbSrc = getThumbUrl(item);
 
+                // ★★★ 信息显示在左上角和底部（像Nuxt网站） ★★★
                 card.innerHTML =
                     '<div class="placeholder-bg" style="background-image: url(' + thumbSrc + ');"></div>' +
                     '<img src="' + thumbSrc + '" alt="' + (item.copyright || item.date || item.startdate || '') +
                     '" loading="lazy" crossorigin="anonymous" />' +
                     '<div class="info">' +
                     '<div class="date">' + (item.startdate || item.date || '') + '</div>' +
-                    '<div class="title">' + (item.title || item.copyright || '无标题') + '</div>' +
-                    '<div class="copyright">' + (item.copyright || '') + '</div>' +
+                    '<div class="title">' + (item.title || item.copyright || '') + '</div>' +
                     '</div>';
 
                 var img = card.querySelector('img');
@@ -1937,12 +1978,10 @@
                 img.addEventListener('error', function() {
                     if (item.isHistory && item.urlbase) {
                         this.src = item.urlbase;
-                        console.log('🔄 历史缩略图降级到原图:', item.startdate);
                         return;
                     }
                     this.classList.add('loaded');
                     placeholderBg.classList.add('hidden');
-                    console.warn('❌ 图片加载失败:', item.startdate || item.date);
                 });
 
                 card.addEventListener('click', function() {
@@ -2132,7 +2171,7 @@
         });
 
         // ============================================================
-        // 7. 大图预览 - ★★★ 智能居中 ★★★
+        // 7. 大图预览
         // ============================================================
 
         function openPreview(index) {
@@ -2196,17 +2235,12 @@
             previewImg.src = imgSrc;
 
             previewImg.onload = async function() {
-                console.log('🖼️ 图片加载完成，开始智能居中...');
-
                 try {
                     const position = await detector.getSmartPosition(previewImg);
                     previewImg.style.objectPosition = position.x + '% ' + position.y + '%';
-                    console.log('✅ 智能居中完成:', position.x.toFixed(1) + '%', position.y.toFixed(1) + '%');
                 } catch (e) {
-                    console.warn('⚠️ 智能居中失败，使用默认居中:', e);
                     previewImg.style.objectPosition = '50% 50%';
                 }
-
                 previewOverlay.style.setProperty('--bg-url', 'url(' + imgSrc + ')');
             };
 
@@ -2214,17 +2248,14 @@
                 var fallbackSrc = getImageUrl(currentPreviewItem, 'hd');
                 if (this.src !== fallbackSrc) {
                     this.src = fallbackSrc;
-                    console.log('🔄 FHD 失败，降级为 HD');
                     return;
                 }
                 var fallback2Src = getImageUrl(currentPreviewItem, 'uhd');
                 if (this.src !== fallback2Src) {
                     this.src = fallback2Src;
-                    console.log('🔄 HD 失败，降级为 UHD');
                     return;
                 }
                 this.alt = '图片加载失败';
-                console.warn('❌ 预览图片加载失败:', currentPreviewItem.startdate || currentPreviewItem.date);
                 previewImg.style.objectPosition = '50% 50%';
             };
 
@@ -2310,7 +2341,7 @@
         closePreviewBtn.addEventListener('click', closePreview);
 
         // ============================================================
-        // ★★★ 7.1 下载功能 - 保持原逻辑，只修复下载执行 ★★★
+        // 7.1 下载功能
         // ============================================================
 
         downloadMenu.querySelectorAll('a').forEach(function(item) {
@@ -2318,12 +2349,10 @@
                 e.preventDefault();
                 e.stopPropagation();
                 var res = this.getAttribute('data-res');
-                console.log('📥 下载请求:', res);
                 downloadImage(currentPreviewIndex, res);
             });
         });
 
-        // ★★★ 获取文件名（原逻辑不变） ★★★
         function getDownloadFileName(item, resolution) {
             var urlbase = item.urlbase || '';
             var rawName = '';
@@ -2371,7 +2400,6 @@
             return 'wallpaper_' + (item.startdate || item.date || Date.now()) + '_' + resolution + '.jpg';
         }
 
-        // ★★★ 智能裁剪下载（原逻辑不变） ★★★
         async function smartCropDownload(blob, fileName, resolution) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
@@ -2382,9 +2410,6 @@
                         const targetW = resolution === 'mobile_s' ? 768 : 1080;
                         const targetH = resolution === 'mobile_s' ? 1280 : 1920;
 
-                        console.log('🧠 智能裁剪:', targetW + 'x' + targetH);
-
-                        // 使用智能检测
                         const detector2 = new SmartSubjectDetector();
                         const subject = await detector2.detectMainSubject(img);
 
@@ -2396,7 +2421,6 @@
                         if (subject) {
                             const centerX = subject.x + subject.width / 2;
                             const centerY = subject.y + subject.height / 2;
-                            console.log('🎯 以主体为中心裁剪');
 
                             if (imgW / imgH > targetRatio) {
                                 cropHeight = imgH;
@@ -2410,7 +2434,6 @@
                                 cropY = Math.max(0, Math.min(imgH - cropHeight, centerY - cropHeight / 2));
                             }
                         } else {
-                            console.log('📌 使用中心裁剪');
                             if (imgW / imgH > targetRatio) {
                                 cropHeight = imgH;
                                 cropWidth = imgH * targetRatio;
@@ -2436,7 +2459,6 @@
                         canvas.toBlob((croppedBlob) => {
                             if (croppedBlob) {
                                 downloadBlob(croppedBlob, fileName);
-                                console.log('✅ 智能裁剪完成');
                                 resolve();
                             } else {
                                 reject('裁剪失败');
@@ -2445,14 +2467,12 @@
 
                         URL.revokeObjectURL(url);
                     } catch (error) {
-                        console.warn('⚠️ 智能裁剪失败，使用中心裁剪:', error);
                         centerCropFallback(img, fileName, resolution);
                         resolve();
                     }
                 };
 
                 img.onerror = function() {
-                    console.warn('⚠️ 图片加载失败，直接下载原图');
                     downloadBlob(blob, fileName);
                     resolve();
                 };
@@ -2461,7 +2481,6 @@
             });
         }
 
-        // 中心裁剪回退
         function centerCropFallback(img, fileName, resolution) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -2493,19 +2512,16 @@
             canvas.toBlob((croppedBlob) => {
                 if (croppedBlob) {
                     downloadBlob(croppedBlob, fileName);
-                    console.log('✅ 中心裁剪完成');
                 }
             }, 'image/jpeg', 0.92);
         }
 
-        // ★★★ 核心下载函数 - 原逻辑不变，只修复下载方式 ★★★
         function downloadImage(index, resolution) {
             if (!allData || allData.length === 0) return;
             var item = allData[index];
             if (!item) return;
 
             var fileName = getDownloadFileName(item, resolution);
-            console.log('📥 下载:', fileName);
 
             var isMobileRes = (resolution === 'mobile' || resolution === 'mobile_s');
 
@@ -2530,8 +2546,6 @@
                         }
                     })
                     .catch(function(err) {
-                        console.warn('⚠️ 下载失败:', err.message);
-                        // 备用：直接打开链接
                         var link = document.createElement('a');
                         link.href = url;
                         link.download = fileName;
@@ -2544,12 +2558,9 @@
 
             if (downloadUrl) {
                 tryDownload(downloadUrl);
-            } else {
-                console.warn('⚠️ 没有可用的下载链接');
             }
         }
 
-        // ★★★ 下载Blob - 修复为直接下载 ★★★
         function downloadBlob(blob, fileName) {
             try {
                 const url = URL.createObjectURL(blob);
@@ -2562,10 +2573,7 @@
                 setTimeout(function() {
                     URL.revokeObjectURL(url);
                 }, 3000);
-                console.log('✅ 下载成功:', fileName);
             } catch (e) {
-                console.warn('下载失败:', e);
-                // 备用：新窗口打开
                 const url = URL.createObjectURL(blob);
                 window.open(url, '_blank');
                 setTimeout(function() {
@@ -2638,7 +2646,7 @@
         // 9. 启动
         // ============================================================
         loadData();
-        console.log('✅ 首页已加载（智能居中 + 下载功能已修复）');
+        console.log('✅ 首页已加载（响应式宽高比 + 智能居中）');
 
         window.openComment = openComment;
 
