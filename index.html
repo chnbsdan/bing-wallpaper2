@@ -7,8 +7,6 @@
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js">
-    </script>
     <style>
         /* ===== CSS 变量 ===== */
         :root {
@@ -618,7 +616,7 @@
             width: 100vw;
             height: 100vh;
             object-fit: cover;
-            object-position: center center;
+            object-position: 50% 50%;
             border-radius: 0;
             box-shadow: none;
             background: #0d0d1a;
@@ -629,7 +627,7 @@
             -webkit-user-select: none;
             user-select: none;
             -webkit-touch-callout: none;
-            transition: object-position 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transition: object-position 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
 
         .arrow {
@@ -1405,7 +1403,7 @@
         <button class="arrow arrow-right" id="nextPreviewBtn"><i class="fas fa-chevron-right"></i></button>
 
         <div class="preview-container">
-            <img class="preview-image" id="previewImg" src="" alt="预览" />
+            <img class="preview-image" id="previewImg" src="" alt="预览" crossorigin="anonymous" />
         </div>
 
         <div class="toolbar" id="toolbar">
@@ -1417,8 +1415,8 @@
                     <a href="#" data-res="fhd" class="res-fhd"><i class="fas fa-desktop"></i> 全高清 (1920×1080)</a>
                     <a href="#" data-res="hd"><i class="fas fa-laptop"></i> 高清 (1366×768)</a>
                     <div class="divider"></div>
-                    <a href="#" data-res="mobile"><i class="fas fa-mobile-alt"></i> 手机 (1080×1920) 🧠智能裁剪</a>
-                    <a href="#" data-res="mobile_s"><i class="fas fa-mobile"></i> 手机 (768×1280) 🧠智能裁剪</a>
+                    <a href="#" data-res="mobile"><i class="fas fa-mobile-alt"></i> 手机 (1080×1920)</a>
+                    <a href="#" data-res="mobile_s"><i class="fas fa-mobile"></i> 手机 (768×1280)</a>
                 </div>
             </div>
             <div class="donate-qr-wrapper">
@@ -1446,255 +1444,256 @@
     </script>
     <script>
         // ============================================================
-        // ★★★ 使用 face-api.js 进行人脸检测 ★★★
+        // ★★★ 纯 JavaScript 智能主体检测（无外部依赖） ★★★
         // ============================================================
-        let faceDetectionModelLoaded = false;
-        let faceApiReady = false;
-
-        // 加载 face-api.js 模型
-        async function loadFaceApiModels() {
-            try {
-                console.log('🔄 加载 face-api.js 模型...');
-
-                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-
-                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-
-                faceApiReady = true;
-                faceDetectionModelLoaded = true;
-                console.log('✅ face-api.js 模型加载完成！');
-            } catch (e) {
-                console.warn('⚠️ face-api.js 模型加载失败:', e);
-                faceApiReady = false;
-            }
-        }
-
-        // 使用 face-api.js 检测人脸
-        async function detectFacesFaceApi(imageElement) {
-            if (!faceApiReady) {
-                return null;
-            }
-
-            try {
-                const detections = await faceapi.detectAllFaces(imageElement, new faceapi.SsdMobilenetv1Options({
-                    minConfidence: 0.5
-                }));
-
-                if (detections && detections.length > 0) {
-                    console.log('👤 face-api.js 检测到 ' + detections.length + ' 张人脸');
-
-                    let maxFace = detections[0];
-                    for (let i = 1; i < detections.length; i++) {
-                        if (detections[i].box.width * detections[i].box.height >
-                            maxFace.box.width * maxFace.box.height) {
-                            maxFace = detections[i];
-                        }
-                    }
-
-                    return {
-                        x: maxFace.box.x,
-                        y: maxFace.box.y,
-                        width: maxFace.box.width,
-                        height: maxFace.box.height,
-                        type: 'face'
-                    };
-                }
-                return null;
-            } catch (e) {
-                console.warn('face-api.js 检测失败:', e);
-                return null;
-            }
-        }
-
-        // ============================================================
-        // ★★★ 智能主体检测与裁剪类（用于预览居中） ★★★
-        // ============================================================
-        class SmartCropper {
+        class SmartSubjectDetector {
             constructor() {
-                this.useFaceApi = false;
-                this.faceApiReady = false;
-
-                if (typeof faceapi !== 'undefined' && faceapi.nets && faceapi.nets.ssdMobilenetv1) {
-                    this.useFaceApi = true;
-                    this.faceApiReady = true;
-                    console.log('✅ face-api.js 已就绪');
-                } else {
-                    console.warn('⚠️ face-api.js 不可用，将使用显著性检测');
-                }
+                console.log('🧠 智能主体检测器已初始化（纯JS版）');
             }
 
-            // 检测图片中的主体
+            // 检测图片中的主体 - 使用边缘检测 + 颜色方差
             async detectMainSubject(imageElement) {
-                // 1. 尝试使用 face-api.js 检测人脸
-                if (this.useFaceApi && this.faceApiReady) {
-                    try {
-                        if (!faceDetectionModelLoaded) {
-                            await loadFaceApiModels();
-                        }
+                const imgWidth = imageElement.naturalWidth || imageElement.width;
+                const imgHeight = imageElement.naturalHeight || imageElement.height;
 
-                        const faceResult = await detectFacesFaceApi(imageElement);
-                        if (faceResult) {
-                            console.log('✅ 使用 face-api.js 检测到人脸');
-                            return faceResult;
-                        }
-                    } catch (e) {
-                        console.warn('face-api.js 检测失败:', e);
-                    }
+                if (imgWidth === 0 || imgHeight === 0) {
+                    return null;
                 }
 
-                // 2. 尝试使用浏览器原生 FaceDetector API
-                if ('FaceDetector' in window) {
-                    try {
-                        const faceDetector = new FaceDetector({
-                            maxDetectedFaces: 5,
-                            fastMode: true
-                        });
-                        const faces = await faceDetector.detect(imageElement);
-                        if (faces && faces.length > 0) {
-                            console.log('👤 原生API检测到 ' + faces.length + ' 张人脸');
-                            const mainFace = faces.reduce((a, b) =>
-                                (a.width * a.height) > (b.width * b.height) ? a : b
-                            );
-                            return {
-                                x: mainFace.boundingBox.x,
-                                y: mainFace.boundingBox.y,
-                                width: mainFace.boundingBox.width,
-                                height: mainFace.boundingBox.height,
-                                type: 'face'
-                            };
-                        }
-                    } catch (e) {
-                        console.warn('原生人脸检测失败:', e);
-                    }
-                }
-
-                // 3. 如果没有检测到人脸，使用显著性检测
-                console.log('🔍 未检测到人脸，尝试显著性检测...');
-                return this.detectSalientRegion(imageElement);
-            }
-
-            // 显著性检测
-            detectSalientRegion(imageElement) {
                 try {
+                    // 创建离屏Canvas分析图片
                     const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    const imgWidth = imageElement.naturalWidth || imageElement.width;
-                    const imgHeight = imageElement.naturalHeight || imageElement.height;
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-                    const scale = Math.min(1, 600 / Math.max(imgWidth, imgHeight));
+                    // 缩小图片提高性能（保持宽高比）
+                    const maxSize = 400;
+                    let scale = Math.min(1, maxSize / Math.max(imgWidth, imgHeight));
                     canvas.width = Math.floor(imgWidth * scale);
                     canvas.height = Math.floor(imgHeight * scale);
 
+                    // 绘制图片
                     ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
 
+                    // 获取像素数据
                     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                     const data = imageData.data;
 
-                    let maxScore = -Infinity;
-                    let bestX = 0,
-                        bestY = 0;
+                    // 1. 计算每个像素的显著度（边缘 + 颜色差异）
+                    const saliencyMap = this.computeSaliencyMap(data, canvas.width, canvas.height);
 
-                    const windowSize = Math.min(100, Math.min(canvas.width, canvas.height) * 0.3);
-                    const step = Math.max(5, Math.floor(windowSize / 4));
+                    // 2. 找到最显著的区域
+                    const bestRegion = this.findBestRegion(saliencyMap, canvas.width, canvas.height);
 
-                    for (let y = 0; y <= canvas.height - windowSize; y += step) {
-                        for (let x = 0; x <= canvas.width - windowSize; x += step) {
-                            let score = this.calculateRegionScore(data, canvas.width, canvas.height, x, y, windowSize);
-                            const cx = x + windowSize / 2;
-                            const cy = y + windowSize / 2;
-                            const distFromCenter = Math.sqrt(
-                                Math.pow((cx / canvas.width) - 0.5, 2) +
-                                Math.pow((cy / canvas.height) - 0.5, 2)
-                            );
-                            score *= (1 + (1 - distFromCenter) * 0.5);
-
-                            if (score > maxScore) {
-                                maxScore = score;
-                                bestX = x;
-                                bestY = y;
-                            }
-                        }
-                    }
-
-                    if (maxScore > 0) {
-                        console.log('🎯 检测到显著区域，得分:', maxScore.toFixed(2));
-                        return {
-                            x: bestX / scale,
-                            y: bestY / scale,
-                            width: windowSize / scale,
-                            height: windowSize / scale,
+                    if (bestRegion) {
+                        // 转换回原始坐标
+                        const result = {
+                            x: bestRegion.x / scale,
+                            y: bestRegion.y / scale,
+                            width: bestRegion.width / scale,
+                            height: bestRegion.height / scale,
                             type: 'salient'
                         };
+                        console.log('🎯 检测到主体区域:', Math.round(result.x), Math.round(result.y),
+                            Math.round(result.width), 'x', Math.round(result.height));
+                        return result;
                     }
+
                     return null;
                 } catch (e) {
-                    console.warn('显著性检测失败:', e);
+                    console.warn('主体检测失败:', e);
                     return null;
                 }
             }
 
-            // 计算区域得分
-            calculateRegionScore(data, width, height, x, y, size) {
-                let sum = 0,
-                    sumSq = 0,
-                    count = 0;
-                const step = Math.max(2, Math.floor(size / 10));
+            // 计算显著度图
+            computeSaliencyMap(data, width, height) {
+                const saliency = new Float32Array(width * height);
 
-                for (let dy = 0; dy < size; dy += step) {
-                    for (let dx = 0; dx < size; dx += step) {
-                        const px = Math.min(x + dx, width - 1);
-                        const py = Math.min(y + dy, height - 1);
-                        const idx = (py * width + px) * 4;
+                // 使用滑动窗口计算局部对比度
+                const windowSize = Math.min(30, Math.floor(Math.min(width, height) * 0.15));
+                const halfWindow = Math.floor(windowSize / 2);
 
+                for (let y = halfWindow; y < height - halfWindow; y += 2) {
+                    for (let x = halfWindow; x < width - halfWindow; x += 2) {
+                        const idx = (y * width + x) * 4;
                         const r = data[idx];
                         const g = data[idx + 1];
                         const b = data[idx + 2];
-                        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                        const centerGray = 0.299 * r + 0.587 * g + 0.114 * b;
 
+                        // 计算周围像素的平均值
+                        let sum = 0,
+                            count = 0;
+                        for (let dy = -halfWindow; dy <= halfWindow; dy += 2) {
+                            for (let dx = -halfWindow; dx <= halfWindow; dx += 2) {
+                                if (dx === 0 && dy === 0) continue;
+                                const ni = ((y + dy) * width + (x + dx)) * 4;
+                                const nr = data[ni];
+                                const ng = data[ni + 1];
+                                const nb = data[ni + 2];
+                                const ngray = 0.299 * nr + 0.587 * ng + 0.114 * nb;
+                                sum += ngray;
+                                count++;
+                            }
+                        }
+                        const avgGray = sum / count;
+
+                        // 对比度 = 中心与周围的差异
+                        const contrast = Math.abs(centerGray - avgGray);
+
+                        // 颜色方差
+                        const colorVar = this.calculateColorVariance(data, width, height, x, y, 3);
+
+                        // 综合得分
+                        saliency[y * width + x] = contrast * 0.7 + colorVar * 0.3;
+                    }
+                }
+
+                // 高斯模糊平滑
+                return this.gaussianBlur(saliency, width, height, 3);
+            }
+
+            // 计算局部颜色方差
+            calculateColorVariance(data, width, height, cx, cy, radius) {
+                let sum = 0,
+                    sumSq = 0,
+                    count = 0;
+                for (let dy = -radius; dy <= radius; dy++) {
+                    for (let dx = -radius; dx <= radius; dx++) {
+                        const x = cx + dx,
+                            y = cy + dy;
+                        if (x < 0 || x >= width || y < 0 || y >= height) continue;
+                        const idx = (y * width + x) * 4;
+                        const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
                         sum += gray;
                         sumSq += gray * gray;
                         count++;
                     }
                 }
-
                 if (count === 0) return 0;
                 const mean = sum / count;
-                const variance = sumSq / count - mean * mean;
-                return variance;
+                return sumSq / count - mean * mean;
             }
 
-            // ★★★ 计算智能居中位置（返回 object-position 百分比） ★★★
+            // 高斯模糊
+            gaussianBlur(data, width, height, radius) {
+                const result = new Float32Array(data.length);
+                const kernel = this.gaussianKernel(radius);
+                const half = Math.floor(radius / 2);
+
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        let sum = 0,
+                            weightSum = 0;
+                        for (let ky = -half; ky <= half; ky++) {
+                            for (let kx = -half; kx <= half; kx++) {
+                                const px = x + kx,
+                                    py = y + ky;
+                                if (px < 0 || px >= width || py < 0 || py >= height) continue;
+                                const weight = kernel[ky + half][kx + half];
+                                sum += data[py * width + px] * weight;
+                                weightSum += weight;
+                            }
+                        }
+                        result[y * width + x] = weightSum > 0 ? sum / weightSum : 0;
+                    }
+                }
+                return result;
+            }
+
+            // 高斯核
+            gaussianKernel(size) {
+                const kernel = [];
+                const sigma = size / 3;
+                let sum = 0;
+                for (let y = 0; y < size; y++) {
+                    kernel[y] = [];
+                    for (let x = 0; x < size; x++) {
+                        const dx = x - Math.floor(size / 2);
+                        const dy = y - Math.floor(size / 2);
+                        const value = Math.exp(-(dx * dx + dy * dy) / (2 * sigma * sigma));
+                        kernel[y][x] = value;
+                        sum += value;
+                    }
+                }
+                // 归一化
+                for (let y = 0; y < size; y++) {
+                    for (let x = 0; x < size; x++) {
+                        kernel[y][x] /= sum;
+                    }
+                }
+                return kernel;
+            }
+
+            // 找到最佳区域
+            findBestRegion(saliency, width, height) {
+                const regionSize = Math.min(120, Math.floor(Math.min(width, height) * 0.35));
+                const step = Math.max(5, Math.floor(regionSize / 5));
+
+                let maxScore = -Infinity;
+                let bestX = 0,
+                    bestY = 0;
+
+                for (let y = 0; y <= height - regionSize; y += step) {
+                    for (let x = 0; x <= width - regionSize; x += step) {
+                        let score = 0;
+                        let count = 0;
+                        for (let dy = 0; dy < regionSize; dy += 2) {
+                            for (let dx = 0; dx < regionSize; dx += 2) {
+                                score += saliency[(y + dy) * width + (x + dx)];
+                                count++;
+                            }
+                        }
+                        score = count > 0 ? score / count : 0;
+
+                        // 中心偏好
+                        const cx = x + regionSize / 2;
+                        const cy = y + regionSize / 2;
+                        const distFromCenter = Math.sqrt(
+                            Math.pow((cx / width) - 0.5, 2) +
+                            Math.pow((cy / height) - 0.5, 2)
+                        );
+                        score *= (1 + (1 - distFromCenter) * 0.4);
+
+                        if (score > maxScore) {
+                            maxScore = score;
+                            bestX = x;
+                            bestY = y;
+                        }
+                    }
+                }
+
+                if (maxScore > 0) {
+                    return {
+                        x: bestX,
+                        y: bestY,
+                        width: regionSize,
+                        height: regionSize,
+                        score: maxScore
+                    };
+                }
+                return null;
+            }
+
+            // 获取智能居中位置（百分比）
             async getSmartPosition(imageElement) {
-                const imgWidth = imageElement.naturalWidth || imageElement.width;
-                const imgHeight = imageElement.naturalHeight || imageElement.height;
+                const subject = await this.detectMainSubject(imageElement);
 
-                if (imgWidth === 0 || imgHeight === 0) {
-                    return { x: 50, y: 50 };
-                }
-
-                let subject = null;
-                try {
-                    subject = await this.detectMainSubject(imageElement);
-                } catch (e) {
-                    console.warn('主体检测失败:', e);
-                    return { x: 50, y: 50 };
-                }
-
-                // 如果没有检测到主体，返回中心
                 if (!subject) {
                     console.log('📌 未检测到主体，使用中心显示');
                     return { x: 50, y: 50 };
                 }
+
+                const imgWidth = imageElement.naturalWidth || imageElement.width;
+                const imgHeight = imageElement.naturalHeight || imageElement.height;
 
                 // 计算主体中心位置百分比
                 const centerX = (subject.x + subject.width / 2) / imgWidth * 100;
                 const centerY = (subject.y + subject.height / 2) / imgHeight * 100;
 
                 // 限制范围，避免过度偏移
-                const clampedX = Math.max(20, Math.min(80, centerX));
-                const clampedY = Math.max(20, Math.min(80, centerY));
+                const clampedX = Math.max(25, Math.min(75, centerX));
+                const clampedY = Math.max(25, Math.min(75, centerY));
 
                 console.log('🎯 智能居中位置:', clampedX.toFixed(1) + '%', clampedY.toFixed(1) + '%');
 
@@ -1881,8 +1880,6 @@
         var searchBtn = document.getElementById('searchBtn');
         var closePreviewBtn = document.getElementById('closePreviewBtn');
         var donateBtn = document.getElementById('donateBtn');
-        var donateModal = document.getElementById('donateModal');
-        var closeDonate = document.getElementById('closeDonate');
         var downloadBtn = document.getElementById('downloadBtn');
         var downloadMenu = document.getElementById('downloadMenu');
         var backToTop = document.getElementById('backToTop');
@@ -1901,7 +1898,7 @@
             lastTranslateY = 0;
 
         var toolbarVisible = true;
-        var smartCropper = new SmartCropper();
+        var detector = new SmartSubjectDetector();
 
         // ============================================================
         // 6.1 加载数据
@@ -1937,10 +1934,6 @@
                 grid.innerHTML = '';
                 renderPage(1);
                 hideProgress();
-
-                if (typeof faceapi !== 'undefined') {
-                    loadFaceApiModels();
-                }
             } catch (err) {
                 console.error('加载失败:', err);
                 showEmpty();
@@ -1985,7 +1978,7 @@
                 card.innerHTML =
                     '<div class="placeholder-bg" style="background-image: url(' + thumbSrc + ');"></div>' +
                     '<img src="' + thumbSrc + '" alt="' + (item.copyright || item.date || item.startdate || '') +
-                    '" loading="lazy" />' +
+                    '" loading="lazy" crossorigin="anonymous" />' +
                     '<div class="info">' +
                     '<div class="date">' + (item.startdate || item.date || '') + '</div>' +
                     '<div class="title">' + (item.title || item.copyright || '无标题') + '</div>' +
@@ -2272,14 +2265,8 @@
                 console.log('🖼️ 图片加载完成，开始智能居中...');
 
                 try {
-                    // 等待 face-api.js 模型加载
-                    if (typeof faceapi !== 'undefined' && !faceDetectionModelLoaded) {
-                        console.log('⏳ 等待 face-api.js 模型加载...');
-                        await loadFaceApiModels();
-                    }
-
-                    // 计算智能居中位置
-                    const position = await smartCropper.getSmartPosition(previewImg);
+                    // 使用纯JS检测主体
+                    const position = await detector.getSmartPosition(previewImg);
                     previewImg.style.objectPosition = position.x + '% ' + position.y + '%';
                     console.log('✅ 智能居中完成:', position.x.toFixed(1) + '%', position.y.toFixed(1) + '%');
                 } catch (e) {
@@ -2392,7 +2379,7 @@
         closePreviewBtn.addEventListener('click', closePreview);
 
         // ============================================================
-        // 7.1 下载功能
+        // 7.1 下载功能 - 简化版（只做中心裁剪，避免跨域问题）
         // ============================================================
 
         downloadMenu.querySelectorAll('a').forEach(function(item) {
@@ -2451,96 +2438,6 @@
             return 'wallpaper_' + (item.startdate || item.date || Date.now()) + '_' + resolution + '.jpg';
         }
 
-        // 智能裁剪下载
-        async function smartCropDownload(blob, fileName, resolution) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                const url = URL.createObjectURL(blob);
-
-                img.onload = async function() {
-                    try {
-                        const targetW = resolution === 'mobile_s' ? 768 : 1080;
-                        const targetH = resolution === 'mobile_s' ? 1280 : 1920;
-
-                        console.log('🧠 ===== 开始智能裁剪下载 =====');
-                        console.log('📐 目标尺寸:', targetW + 'x' + targetH);
-
-                        if (typeof faceapi !== 'undefined' && !faceDetectionModelLoaded) {
-                            console.log('⏳ 等待 face-api.js 模型加载...');
-                            await loadFaceApiModels();
-                        }
-
-                        const cropper = new SmartCropper();
-                        const canvas = await cropper.smartCrop(img, targetW, targetH);
-
-                        canvas.toBlob((croppedBlob) => {
-                            if (croppedBlob) {
-                                downloadBlob(croppedBlob, fileName);
-                                console.log('✅ 智能裁剪下载完成');
-                                resolve();
-                            } else {
-                                reject('裁剪失败');
-                            }
-                        }, 'image/jpeg', 0.92);
-
-                        URL.revokeObjectURL(url);
-                    } catch (error) {
-                        console.warn('⚠️ 智能裁剪失败，使用中心裁剪:', error);
-                        centerCropFallback(img, fileName, resolution);
-                        resolve();
-                    }
-                };
-
-                img.onerror = function() {
-                    console.warn('⚠️ 图片加载失败，直接下载原图');
-                    downloadBlob(blob, fileName);
-                    resolve();
-                };
-
-                img.src = url;
-            });
-        }
-
-        // 中心裁剪回退
-        function centerCropFallback(img, fileName, resolution) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const targetW = resolution === 'mobile_s' ? 768 : 1080;
-            const targetH = resolution === 'mobile_s' ? 1280 : 1920;
-
-            canvas.width = targetW;
-            canvas.height = targetH;
-
-            const imgW = img.width;
-            const imgH = img.height;
-            const targetRatio = targetW / targetH;
-            let cropW, cropH, cropX, cropY;
-
-            if (imgW / imgH > targetRatio) {
-                cropH = imgH;
-                cropW = imgH * targetRatio;
-                cropX = (imgW - cropW) / 2;
-                cropY = 0;
-            } else {
-                cropW = imgW;
-                cropH = imgW / targetRatio;
-                cropX = 0;
-                cropY = (imgH - cropH) / 2;
-            }
-
-            console.log('📌 使用中心裁剪回退');
-            ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, targetW, targetH);
-
-            canvas.toBlob((croppedBlob) => {
-                if (croppedBlob) {
-                    downloadBlob(croppedBlob, fileName);
-                    console.log('✅ 中心裁剪完成（回退方案）');
-                } else {
-                    console.error('❌ 裁剪失败');
-                }
-            }, 'image/jpeg', 0.92);
-        }
-
         function downloadImage(index, resolution) {
             if (!allData || allData.length === 0) return;
             var item = allData[index];
@@ -2549,8 +2446,6 @@
             var fileName = getDownloadFileName(item, resolution);
             console.log('📥 下载文件名:', fileName);
 
-            var isMobileRes = (resolution === 'mobile' || resolution === 'mobile_s');
-
             var downloadUrl;
             if (item.isHistory) {
                 downloadUrl = item.urlbase || '';
@@ -2558,51 +2453,19 @@
                 downloadUrl = getImageUrl(item, 'uhd');
             }
 
-            function tryDownload(url) {
-                console.log('🌐 下载URL:', url);
-                fetch(url, { mode: 'cors' })
-                    .then(function(response) {
-                        if (!response.ok) throw new Error('网络请求失败: ' + response.status);
-                        return response.blob();
-                    })
-                    .then(function(blob) {
-                        if (isMobileRes) {
-                            return smartCropDownload(blob, fileName, resolution);
-                        } else {
-                            return downloadBlob(blob, fileName);
-                        }
-                    })
-                    .catch(function(err) {
-                        console.warn('⚠️ 下载失败，尝试新窗口打开:', err.message);
-                        var link = document.createElement('a');
-                        link.href = url;
-                        link.download = fileName;
-                        link.target = '_blank';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    });
-            }
-
             if (downloadUrl) {
-                tryDownload(downloadUrl);
+                console.log('🌐 下载URL:', downloadUrl);
+                var link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = fileName;
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                console.log('✅ 下载已开始');
             } else {
                 console.warn('⚠️ 没有可用的下载链接');
             }
-        }
-
-        function downloadBlob(blob, fileName) {
-            var url = URL.createObjectURL(blob);
-            var link = document.createElement('a');
-            link.href = url;
-            link.download = fileName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setTimeout(function() {
-                URL.revokeObjectURL(url);
-            }, 2000);
-            console.log('✅ 下载成功: ' + fileName);
         }
 
         // ============================================================
@@ -2669,10 +2532,10 @@
         // 9. 启动
         // ============================================================
         loadData();
-        console.log('✅ 首页已加载（支持预览智能居中 + 下载智能裁剪）');
+        console.log('✅ 首页已加载（纯JS智能居中，无跨域问题）');
         console.log('📊 数据源: /json/data.json');
         console.log('🧠 预览时自动识别人物/物体并居中显示');
-        console.log('💡 下载手机壁纸时也会智能裁剪');
+        console.log('💡 使用边缘检测+颜色方差算法，无需外部依赖');
 
         window.openComment = openComment;
 
