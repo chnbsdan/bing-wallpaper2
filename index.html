@@ -331,7 +331,7 @@
             }
         }
 
-        /* ===== 网格 ===== */
+        /* ===== 网格 - ★★★ 修复重叠问题 ★★★ ===== */
         .app {
             display: flex;
             flex-direction: column;
@@ -354,21 +354,18 @@
             align-content: start;
         }
         .grid::-webkit-scrollbar {
-            width: 6px;
+            width: 4px;
         }
         .grid::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.04);
-            border-radius: 3px;
+            border-radius: 2px;
         }
         .grid::-webkit-scrollbar-thumb {
             background: var(--accent-color);
-            border-radius: 3px;
-        }
-        .grid::-webkit-scrollbar-thumb:hover {
-            background: #81d4fa;
+            border-radius: 2px;
         }
 
-        /* ===== 卡片 - 响应式宽高比 ★★★ ===== */
+        /* ===== 卡片 - ★★★ 修复重叠 ★★★ ===== */
         .card {
             position: relative;
             overflow: hidden;
@@ -377,34 +374,10 @@
             transition: all 0.3s ease;
             -webkit-tap-highlight-color: transparent;
             border-radius: 6px;
-            /* ★★★ 移动端默认 3:5（竖屏） ★★★ */
+            /* ★★★ 移动端 3:5（竖屏） ★★★ */
             aspect-ratio: 3 / 5;
             min-height: 0;
-        }
-        /* ★★★ 桌面端改为 16:9（横屏） ★★★ */
-        @media (min-width: 768px) {
-            .grid {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 8px;
-                padding: 8px;
-            }
-            .card {
-                aspect-ratio: 16 / 9;
-                border-radius: 8px;
-                transition: transform 0.3s ease, box-shadow 0.3s ease, z-index 0.3s ease;
-            }
-            .card:hover {
-                transform: scale(1.05);
-                z-index: 1;
-                box-shadow: 0 0 0 3px rgba(220, 60, 60, 0.6);
-            }
-        }
-        @media (min-width: 1024px) {
-            .grid {
-                grid-template-columns: repeat(5, 1fr);
-                gap: 10px;
-                padding: 10px;
-            }
+            width: 100%;
         }
 
         .card img {
@@ -442,46 +415,64 @@
             opacity: 0;
         }
 
-        /* ★★★ 卡片信息 - 像Nuxt网站一样 ★★★ */
+        /* ★★★ 卡片信息 ★★★ */
         .card .info {
             position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             z-index: 3;
             pointer-events: none;
-            transition: opacity 0.3s ease;
         }
-        /* 日期 - 左上角 */
         .card .info .date {
             position: absolute;
             top: 0;
             left: 0;
-            background: rgba(0, 0, 0, 0.4);
+            background: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(4px);
             padding: 2px 8px;
             border-radius: 0 0 8px 0;
-            font-size: 11px;
+            font-size: 10px;
             color: rgba(255, 255, 255, 0.9);
             font-weight: 500;
             text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+            line-height: 1.6;
         }
-        /* 标题 - 底部 */
         .card .info .title {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(4px);
             padding: 4px 8px;
-            font-size: 12px;
+            font-size: 11px;
             color: rgba(255, 255, 255, 0.95);
             font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+            line-height: 1.6;
         }
-        /* 桌面端 hover 显示更多信息 */
+
+        /* ★★★ 桌面端 ★★★ */
         @media (min-width: 768px) {
+            .grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                padding: 8px;
+            }
+            .card {
+                aspect-ratio: 16 / 9;
+                border-radius: 8px;
+            }
+            .card:hover {
+                transform: scale(1.05);
+                z-index: 1;
+                box-shadow: 0 0 0 3px rgba(220, 60, 60, 0.6);
+            }
             .card .info .date {
                 font-size: 12px;
                 padding: 3px 10px;
@@ -494,6 +485,13 @@
             }
             .card:hover .info .title {
                 opacity: 1;
+            }
+        }
+        @media (min-width: 1024px) {
+            .grid {
+                grid-template-columns: repeat(5, 1fr);
+                gap: 10px;
+                padding: 10px;
             }
         }
 
@@ -1203,114 +1201,38 @@
             color: #666 !important;
         }
 
-        /* ===== 响应式 ===== */
-        @media (max-width: 1200px) {
-            .card {
-                flex: 0 0 20%;
+        /* ===== 移动端微调 ===== */
+        @media (max-width: 576px) {
+            .grid {
+                gap: 3px;
+                padding: 3px;
             }
-        }
-        @media (max-width: 992px) {
             .card {
-                flex: 0 0 25%;
+                border-radius: 4px;
             }
-        }
-        @media (max-width: 768px) {
-            .card {
-                flex: 0 0 33.333%;
+            .card .info .date {
+                font-size: 9px;
+                padding: 1px 6px;
+            }
+            .card .info .title {
+                font-size: 10px;
+                padding: 3px 6px;
             }
             .navbar {
-                left: 52px;
-                min-width: 160px;
-                padding: 12px 14px;
-                top: 10px;
+                left: 48px;
+                min-width: 140px;
+                padding: 10px 12px;
+                top: 8px;
             }
             .nav-toggle {
-                font-size: 18px;
-                padding: 5px 10px;
-                top: 10px;
-                left: 10px;
-            }
-            .arrow {
-                font-size: 20px;
-                padding: 14px 10px;
-            }
-            .arrow-left {
+                font-size: 16px;
+                padding: 4px 8px;
+                top: 8px;
                 left: 8px;
             }
-            .arrow-right {
-                right: 8px;
-            }
-            .toolbar {
-                top: 12px;
-                right: 12px;
-                gap: 6px;
-            }
-            .toolbar .btn {
-                font-size: 11px;
-                padding: 5px 10px;
-            }
-            .info-panel .copyright {
-                font-size: 17px;
-            }
-            .info-panel .desc {
-                font-size: 14px;
-                -webkit-line-clamp: 1;
-            }
-            .info-panel .date {
-                font-size: 13px;
-            }
-            .donate-qr-wrapper .qr-tooltip {
-                min-width: 220px;
-                padding: 10px 12px;
-            }
-            .donate-qr-wrapper .qr-tooltip .qr-item img {
-                width: 90px;
-                height: 90px;
-            }
-            .comment-modal {
-                width: 95%;
-                max-height: 90vh;
-                border-radius: 12px;
-            }
-            .comment-header {
-                padding: 14px 16px 10px;
-            }
-            .comment-header h2 {
-                font-size: 16px;
-            }
-            .comment-body {
-                padding: 14px 16px 12px;
-            }
-            .back-to-top {
-                width: 38px;
-                height: 38px;
-                font-size: 16px;
-                bottom: 70px;
-                right: 14px;
-            }
-            .dropdown-menu {
-                min-width: 150px;
-            }
-            .dropdown-menu a {
-                font-size: 12px;
-                padding: 7px 14px;
-            }
-        }
-        @media (max-width: 576px) {
-            .card {
-                flex: 0 0 50%;
-            }
-            .donate-qr-wrapper .qr-tooltip {
-                min-width: 180px;
-                padding: 8px 10px;
-            }
-            .donate-qr-wrapper .qr-tooltip .qr-item img {
-                width: 75px;
-                height: 75px;
-            }
             .arrow {
-                font-size: 18px;
-                padding: 12px 8px;
+                font-size: 16px;
+                padding: 10px 6px;
             }
             .arrow-left {
                 left: 4px;
@@ -1318,27 +1240,50 @@
             .arrow-right {
                 right: 4px;
             }
+            .toolbar {
+                top: 8px;
+                right: 8px;
+                gap: 4px;
+            }
+            .toolbar .btn {
+                font-size: 10px;
+                padding: 4px 8px;
+            }
             .toolbar .btn span {
                 display: none;
             }
-            .toolbar .btn {
-                padding: 5px 10px;
-            }
             .toolbar .btn i {
-                font-size: 14px;
+                font-size: 13px;
             }
             .dropdown-menu {
-                min-width: 130px;
-                right: -6px;
+                min-width: 120px;
+                right: -4px;
             }
             .dropdown-menu a {
+                font-size: 10px;
+                padding: 5px 10px;
+            }
+            .info-panel .copyright {
+                font-size: 14px;
+            }
+            .info-panel .desc {
+                font-size: 12px;
+                -webkit-line-clamp: 1;
+            }
+            .info-panel .date {
                 font-size: 11px;
-                padding: 6px 12px;
+            }
+            .back-to-top {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+                bottom: 60px;
+                right: 10px;
             }
             .donate-qr-wrapper .qr-tooltip {
                 min-width: 150px;
                 padding: 6px 8px;
-                right: -10px;
+                right: -8px;
             }
             .donate-qr-wrapper .qr-tooltip .qr-item img {
                 width: 60px;
@@ -1366,27 +1311,20 @@
             .comment-body {
                 padding: 10px 12px 8px;
             }
-            .back-to-top {
-                width: 34px;
-                height: 34px;
-                font-size: 14px;
-                bottom: 60px;
-                right: 10px;
-            }
-            .info-panel .copyright {
-                font-size: 15px;
-            }
-            .info-panel .desc {
-                font-size: 13px;
-            }
-            .info-panel .date {
-                font-size: 12px;
-            }
+        }
+
+        /* 删除旧的响应式冲突 */
+        @media (max-width: 1200px) {
+            /* 已被grid覆盖，不需要 */
+        }
+        @media (max-width: 992px) {
+            /* 已被grid覆盖，不需要 */
+        }
+        @media (max-width: 768px) {
+            /* 已被grid覆盖，不需要 */
         }
         @media (max-width: 400px) {
-            .card {
-                flex: 0 0 50%;
-            }
+            /* 已被grid覆盖，不需要 */
         }
     </style>
 </head>
@@ -1920,7 +1858,7 @@
         }
 
         // ============================================================
-        // 6.2 渲染页面 - ★★★ 使用 Grid 布局 + 响应式宽高比 ★★★
+        // 6.2 渲染页面
         // ============================================================
         function renderPage(page) {
             var data = filteredData.length > 0 ? filteredData : allData;
@@ -1953,7 +1891,6 @@
 
                 var thumbSrc = getThumbUrl(item);
 
-                // ★★★ 信息显示在左上角和底部（像Nuxt网站） ★★★
                 card.innerHTML =
                     '<div class="placeholder-bg" style="background-image: url(' + thumbSrc + ');"></div>' +
                     '<img src="' + thumbSrc + '" alt="' + (item.copyright || item.date || item.startdate || '') +
